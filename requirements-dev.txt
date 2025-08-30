@@ -1,0 +1,14 @@
+# Development dependencies
+pytest>=7.0
+pytest-asyncio>=0.21.0
+black>=23.0
+flake8>=6.0
+mypy>=1.0
+
+# Documentation
+sphinx>=7.0
+sphinx-rtd-theme>=1.0
+
+# Testing utilities
+pytest-mock>=3.0
+pytest-cov>=4.0
