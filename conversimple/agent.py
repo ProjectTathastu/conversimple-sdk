@@ -147,7 +147,7 @@ class ConversimpleAgent:
 
     async def _handle_platform_message(self, event: str, payload: Dict) -> None:
         """Handle incoming messages from the platform."""
-        logger.debug(f"Received platform message: {event}")
+        logger.info(f"📨 Received platform message: {event} - {payload}")
         
         handlers = {
             "config_update": self._handle_config_update,
@@ -228,20 +228,27 @@ class ConversimpleAgent:
         event = payload.get("event")
         conversation_id = payload.get("conversation_id")
         
-        logger.info(f"Conversation lifecycle: {event} for {conversation_id}")
+        logger.info(f"🎭 Conversation lifecycle: {event} for {conversation_id}")
+        logger.info(f"🎭 Full payload: {payload}")
         
         if event == "conversation_started":
             # Auto-register tools for this conversation
             if conversation_id and self.registered_tools:
-                logger.info(f"Auto-registering {len(self.registered_tools)} tools for conversation {conversation_id}")
+                logger.info(f"🔧 Auto-registering {len(self.registered_tools)} tools for conversation {conversation_id}")
                 try:
                     await self._register_conversation_tools(conversation_id, self.registered_tools)
+                    logger.info(f"✅ Successfully auto-registered tools for conversation {conversation_id}")
                 except Exception as e:
-                    logger.error(f"Failed to auto-register tools for conversation {conversation_id}: {e}")
+                    logger.error(f"❌ Failed to auto-register tools for conversation {conversation_id}: {e}")
+            else:
+                logger.warning(f"⚠️  Cannot auto-register tools - conversation_id: {conversation_id}, tools available: {bool(self.registered_tools)}")
             
             await self.callback_manager.trigger_conversation_started(conversation_id, payload)
         elif event == "conversation_ended":
+            logger.info(f"🏁 Conversation ended: {conversation_id}")
             await self.callback_manager.trigger_conversation_ended(conversation_id, payload)
+        else:
+            logger.warning(f"❓ Unknown lifecycle event: {event}")
 
     async def _handle_hook_event(self, payload: Dict) -> None:
         """Handle hook events from platform."""
