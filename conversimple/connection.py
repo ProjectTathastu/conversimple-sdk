@@ -144,14 +144,14 @@ class WebSocketConnection:
             logger.warning(f"Cannot send message {event}: not connected")
             return
             
-        # Phoenix WebSocket message format
-        message = [
-            None,  # join_ref (not used for regular messages)
-            self._next_message_ref(),
-            f"customer:{self.customer_id}",
-            event,
-            payload
-        ]
+        # Phoenix WebSocket message format (as JSON object)
+        message = {
+            "join_ref": None,  # join_ref (not used for regular messages)
+            "ref": self._next_message_ref(),
+            "topic": f"customer:{self.customer_id}",
+            "event": event,
+            "payload": payload
+        }
         
         try:
             await self.websocket.send(json.dumps(message))
@@ -166,14 +166,14 @@ class WebSocketConnection:
         join_ref = self._next_message_ref()
         message_ref = self._next_message_ref()
         
-        # Phoenix channel join message
-        message = [
-            join_ref,
-            message_ref, 
-            f"customer:{self.customer_id}",
-            "phx_join",
-            {}
-        ]
+        # Phoenix channel join message (as JSON object)
+        message = {
+            "join_ref": join_ref,
+            "ref": message_ref,
+            "topic": f"customer:{self.customer_id}",
+            "event": "phx_join",
+            "payload": {}
+        }
         
         logger.info(f"Joining channel: customer:{self.customer_id}")
         
@@ -184,14 +184,28 @@ class WebSocketConnection:
             response = await self.websocket.recv()
             response_data = json.loads(response)
             
-            if (len(response_data) >= 5 and 
-                response_data[3] == "phx_reply" and
-                response_data[4].get("status") == "ok"):
-                
-                self.channel_joined = True
-                logger.info("Channel joined successfully")
+            # Handle both array and object response formats
+            if isinstance(response_data, list):
+                # Phoenix sends responses as arrays: [join_ref, ref, topic, event, payload]
+                if (len(response_data) >= 5 and 
+                    response_data[3] == "phx_reply" and
+                    response_data[4].get("status") == "ok"):
+                    
+                    self.channel_joined = True
+                    logger.info("Channel joined successfully")
+                else:
+                    raise Exception(f"Channel join failed: {response_data}")
+            elif isinstance(response_data, dict):
+                # Handle object format if Phoenix ever changes
+                if (response_data.get("event") == "phx_reply" and
+                    response_data.get("payload", {}).get("status") == "ok"):
+                    
+                    self.channel_joined = True
+                    logger.info("Channel joined successfully")
+                else:
+                    raise Exception(f"Channel join failed: {response_data}")
             else:
-                raise Exception(f"Channel join failed: {response_data}")
+                raise Exception(f"Unexpected response format: {response_data}")
                 
         except Exception as e:
             logger.error(f"Failed to join channel: {e}")
@@ -255,7 +269,7 @@ class WebSocketConnection:
             message_data = json.loads(raw_message)
             
             # Phoenix WebSocket message format: [join_ref, ref, topic, event, payload]
-            if len(message_data) >= 4:
+            if isinstance(message_data, list) and len(message_data) >= 4:
                 event = message_data[3]
                 payload = message_data[4] if len(message_data) > 4 else {}
                 
@@ -268,13 +282,28 @@ class WebSocketConnection:
                     # Forward platform events to message handler
                     if self.message_handler:
                         await self.message_handler(event, payload)
+            elif isinstance(message_data, dict):
+                # Handle object format messages (future compatibility)
+                event = message_data.get("event")
+                payload = message_data.get("payload", {})
+                
+                if event == "phx_reply":
+                    await self._handle_phoenix_reply(payload)
+                elif event == "phx_error":
+                    logger.error(f"Phoenix error: {payload}")
+                elif event and self.message_handler:
+                    await self.message_handler(event, payload)
+                else:
+                    logger.debug(f"Received message without event: {message_data}")
             else:
-                logger.warning(f"Invalid message format: {message_data}")
+                logger.warning(f"Invalid message format (expected array or object): {message_data}")
                 
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode message: {e}")
         except Exception as e:
             logger.error(f"Message processing error: {e}")
+            logger.debug(f"Raw message that caused error: {raw_message}")
+            logger.debug(f"Parsed message data: {message_data if 'message_data' in locals() else 'Failed to parse'}")
 
     async def _handle_phoenix_reply(self, payload: Dict) -> None:
         """Handle Phoenix reply messages."""

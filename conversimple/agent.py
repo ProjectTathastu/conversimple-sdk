@@ -135,6 +135,16 @@ class ConversimpleAgent:
         await self.connection.send_message("register_conversation_tools", message)
         logger.info(f"Registered {len(tools)} tools with platform")
 
+    async def _register_conversation_tools(self, conversation_id: str, tools: list) -> None:
+        """Register tools for a specific conversation."""
+        message = {
+            "conversation_id": conversation_id,
+            "tools": tools
+        }
+        
+        await self.connection.send_message("register_conversation_tools", message)
+        logger.info(f"Registered {len(tools)} tools for conversation {conversation_id}")
+
     async def _handle_platform_message(self, event: str, payload: Dict) -> None:
         """Handle incoming messages from the platform."""
         logger.debug(f"Received platform message: {event}")
@@ -221,6 +231,14 @@ class ConversimpleAgent:
         logger.info(f"Conversation lifecycle: {event} for {conversation_id}")
         
         if event == "conversation_started":
+            # Auto-register tools for this conversation
+            if conversation_id and self.registered_tools:
+                logger.info(f"Auto-registering {len(self.registered_tools)} tools for conversation {conversation_id}")
+                try:
+                    await self._register_conversation_tools(conversation_id, self.registered_tools)
+                except Exception as e:
+                    logger.error(f"Failed to auto-register tools for conversation {conversation_id}: {e}")
+            
             await self.callback_manager.trigger_conversation_started(conversation_id, payload)
         elif event == "conversation_ended":
             await self.callback_manager.trigger_conversation_ended(conversation_id, payload)
