@@ -100,7 +100,8 @@ class ConversimpleAgent:
         # Auto-register tools from decorated methods
         auto_register_tools(self)
         
-        # Register discovered tools
+        # Store tools for later registration when real conversations start
+        # Don't register immediately since we don't have a real conversation ID yet
         await self._register_tools()
         
         logger.info(f"Agent started successfully for conversation: {self.conversation_id}")
@@ -117,23 +118,15 @@ class ConversimpleAgent:
         await self.callback_manager.trigger_conversation_ended(self.conversation_id)
 
     async def _register_tools(self) -> None:
-        """Register all discovered tools with the platform."""
+        """Store discovered tools for registration when conversations start."""
         tools = self.tool_registry.get_registered_tools()
         
         if not tools:
-            logger.info("No tools to register")
+            logger.info("No tools discovered")
             return
             
         self.registered_tools = tools
-        
-        # Send tool registration message
-        message = {
-            "conversation_id": self.conversation_id,
-            "tools": tools
-        }
-        
-        await self.connection.send_message("register_conversation_tools", message)
-        logger.info(f"Registered {len(tools)} tools with platform")
+        logger.info(f"Discovered {len(tools)} tools, will register when conversations start")
 
     async def _register_conversation_tools(self, conversation_id: str, tools: list) -> None:
         """Register tools for a specific conversation."""
