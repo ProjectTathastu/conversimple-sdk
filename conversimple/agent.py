@@ -15,6 +15,7 @@ import os
 import uuid
 from typing import Dict, List, Optional, Callable, Any, Union
 from datetime import datetime
+import datetime as dt
 
 from .connection import WebSocketConnection
 from .tools import ToolRegistry, ToolCall, auto_register_tools
@@ -315,7 +316,7 @@ class ConversimpleAgent:
             "call_id": call_id,
             "error": {
                 "message": error,
-                "timestamp": datetime.utc_now().isoformat()
+                "timestamp": datetime.now(dt.timezone.utc).isoformat()
             }
         }
         

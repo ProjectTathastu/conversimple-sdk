@@ -15,6 +15,7 @@ import logging
 from typing import Dict, List, Optional, Any, Callable, Union, get_type_hints
 from dataclasses import dataclass
 from datetime import datetime
+import datetime as dt
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class ToolCall:
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.utc_now()
+            self.timestamp = datetime.now(dt.timezone.utc)
 
 
 class ToolRegistry:
