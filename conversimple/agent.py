@@ -149,7 +149,8 @@ class ConversimpleAgent:
             "conversation_lifecycle": self._handle_conversation_lifecycle,
             "hook_event": self._handle_hook_event,
             "connection_warning": self._handle_connection_warning,
-            "error_notification": self._handle_error_notification
+            "error_notification": self._handle_error_notification,
+            "conversation_ready": self._handle_conversation_ready
         }
         
         handler = handlers.get(event)
@@ -171,6 +172,28 @@ class ConversimpleAgent:
         """Handle analytics updates from platform."""
         logger.debug(f"Analytics update received: {payload}")
         # Analytics updates are typically fire-and-forget
+
+    async def _handle_conversation_ready(self, payload: Dict) -> None:
+        """Handle conversation ready events from platform."""
+        conversation_id = payload.get('conversation_id')
+        customer_id = payload.get('customer_id')
+        
+        logger.info(f"🔧 AGENT_FLOW: Conversation ready event received for {conversation_id}")
+        
+        if not conversation_id:
+            logger.error("🔧 AGENT_FLOW: No conversation_id in conversation_ready event")
+            return
+            
+        if not self.registered_tools:
+            logger.warning("🔧 AGENT_FLOW: No tools available to register for conversation")
+            return
+        
+        # Register tools for this specific conversation
+        logger.info(f"🔧 AGENT_FLOW: Registering {len(self.registered_tools)} tools for conversation {conversation_id}")
+        await self._register_conversation_tools(conversation_id, self.registered_tools)
+        
+        # Trigger conversation started callback
+        await self.callback_manager.trigger_conversation_started(conversation_id)
 
     async def _handle_tool_call_request(self, payload: Dict) -> None:
         """Handle tool execution requests from platform."""
