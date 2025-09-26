@@ -15,7 +15,7 @@ except FileNotFoundError:
     long_description = "Conversimple SDK - Python client library for the Conversational AI Platform"
 
 setup(
-    name="conversimple-sdk",
+    name="conversimple",
     version="0.1.0",
     author="Conversimple",
     author_email="support@conversimple.com",
