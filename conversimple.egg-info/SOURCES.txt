@@ -1,0 +1,15 @@
+README.md
+setup.py
+conversimple/__init__.py
+conversimple/agent.py
+conversimple/callbacks.py
+conversimple/connection.py
+conversimple/tools.py
+conversimple/utils.py
+conversimple.egg-info/PKG-INFO
+conversimple.egg-info/SOURCES.txt
+conversimple.egg-info/dependency_links.txt
+conversimple.egg-info/entry_points.txt
+conversimple.egg-info/not-zip-safe
+conversimple.egg-info/requires.txt
+conversimple.egg-info/top_level.txt

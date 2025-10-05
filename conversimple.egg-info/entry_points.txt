@@ -1,0 +1,2 @@
+[console_scripts]
+conversimple-example = examples.simple_agent:main
