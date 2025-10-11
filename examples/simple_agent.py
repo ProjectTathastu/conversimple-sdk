@@ -104,9 +104,20 @@ class WeatherAgent(ConversimpleAgent):
         print(f"Weather tool completed successfully")
 
     def on_error(self, error_type: str, error_message: str, details: Dict) -> None:
-        """Handle error events."""
+        """Handle error events including circuit breaker."""
         logger.error(f"❌ Weather agent error ({error_type}): {error_message}")
-        print(f"Error occurred: {error_message}")
+
+        # Handle different error types
+        if error_type == "AUTH_FAILED":
+            print(f"🚫 Authentication failed: {error_message}")
+            print("🔑 Circuit breaker opened - check your API key")
+        elif error_type == "CUSTOMER_SUSPENDED":
+            print(f"⛔ Account suspended: {error_message}")
+            print("📧 Contact support to reactivate your account")
+        else:
+            # Transient error - will auto-retry
+            print(f"⚠️  Temporary error: {error_message}")
+            print("🔄 Agent will reconnect automatically")
 
 
 async def main():
@@ -126,12 +137,29 @@ async def main():
     print(f"Platform URL: {platform_url}")
     print()
 
-    # Create weather agent
+    # Create weather agent with production defaults
+    # - Infinite retries for transient errors (network issues)
+    # - Circuit breaker stops retries on permanent errors (auth failures)
+    # - Exponential backoff up to 5 minutes between retries
     agent = WeatherAgent(
         api_key=api_key,
         customer_id=customer_id,
         platform_url=platform_url
+        # Optional connection configuration (showing defaults):
+        # max_reconnect_attempts=None,      # Infinite retries (recommended)
+        # reconnect_backoff=2.0,            # Exponential backoff multiplier
+        # max_backoff=300.0,                # Max 5 minutes between retries
+        # enable_circuit_breaker=True       # Stop on auth failures
     )
+
+    # For testing with limited retries:
+    # agent = WeatherAgent(
+    #     api_key=api_key,
+    #     customer_id=customer_id,
+    #     platform_url=platform_url,
+    #     max_reconnect_attempts=5,         # Only 5 retry attempts
+    #     total_retry_duration=60           # Give up after 1 minute
+    # )
 
     # Set up event callbacks
     agent.on_conversation_started = agent.on_conversation_started

@@ -377,9 +377,15 @@ class CustomerServiceAgent(ConversimpleAgent):
         logger.info(f"🔧 Executing customer service tool: {tool_call.tool_name}")
 
     def on_error(self, error_type: str, error_message: str, details: Dict) -> None:
-        """Handle error events.""" 
+        """Handle error events including circuit breaker."""
         logger.error(f"❌ Customer service error ({error_type}): {error_message}")
-        print(f"I apologize, but I encountered an error: {error_message}")
+
+        if error_type in ["AUTH_FAILED", "CUSTOMER_SUSPENDED"]:
+            print(f"🚫 Service unavailable due to: {error_message}")
+            print("📧 Please contact support for assistance")
+        else:
+            print(f"⚠️  Temporary issue: {error_message}")
+            print("🔄 Service will reconnect automatically")
 
 
 async def main():
@@ -397,11 +403,16 @@ async def main():
     print(f"Platform URL: {platform_url}")
     print()
 
-    # Create customer service agent
+    # Create customer service agent with production-ready connection settings
+    # Infinite retries ensure 24/7 availability with circuit breaker for auth issues
     agent = CustomerServiceAgent(
         api_key=api_key,
         customer_id=customer_id,
         platform_url=platform_url
+        # Production defaults (infinite retry with circuit breaker):
+        # max_reconnect_attempts=None,      # Never give up on network issues
+        # max_backoff=300,                   # Max 5 min between retries
+        # enable_circuit_breaker=True        # Stop on auth failures
     )
 
     try:

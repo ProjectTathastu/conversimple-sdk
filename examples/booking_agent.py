@@ -476,6 +476,17 @@ class BookingAgent(ConversimpleAgent):
         """Handle tool call events."""
         logger.info(f"🔧 Executing booking tool: {tool_call.tool_name}")
 
+    def on_error(self, error_type: str, error_message: str, details: Dict) -> None:
+        """Handle error events including circuit breaker."""
+        logger.error(f"❌ Booking agent error ({error_type}): {error_message}")
+
+        if error_type in ["AUTH_FAILED", "CUSTOMER_SUSPENDED"]:
+            print(f"🚫 Booking service unavailable: {error_message}")
+            print("📧 Please contact support")
+        else:
+            print(f"⚠️  Temporary issue: {error_message}")
+            print("🔄 Reconnecting automatically...")
+
 
 async def main():
     """Main function for booking agent."""
@@ -492,11 +503,16 @@ async def main():
     print(f"Platform URL: {platform_url}")
     print()
 
-    # Create booking agent
+    # Create booking agent with production connection defaults
+    # Critical for booking systems - never miss a reservation due to network issues
     agent = BookingAgent(
         api_key=api_key,
         customer_id=customer_id,
         platform_url=platform_url
+        # Production defaults ensure maximum availability:
+        # max_reconnect_attempts=None,      # Infinite retries for network issues
+        # max_backoff=300,                   # Max 5 minutes between retries
+        # enable_circuit_breaker=True        # But stop on auth failures
     )
 
     try:

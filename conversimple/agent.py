@@ -37,25 +37,40 @@ class ConversimpleAgent:
         self,
         api_key: str,
         customer_id: Optional[str] = None,
-        platform_url: str = "ws://localhost:4000/sdk/websocket"
+        platform_url: str = "ws://localhost:4000/sdk/websocket",
+        max_reconnect_attempts: Optional[int] = None,
+        reconnect_backoff: float = 2.0,
+        max_backoff: float = 300.0,
+        total_retry_duration: Optional[float] = None,
+        enable_circuit_breaker: bool = True
     ):
         """
-        Initialize Conversimple agent.
-        
+        Initialize Conversimple agent with enhanced connection resilience.
+
         Args:
             api_key: Customer authentication token
             customer_id: Customer identifier (derived from API key if not provided)
             platform_url: WebSocket URL for platform connection
+            max_reconnect_attempts: Maximum reconnection attempts (None = infinite, recommended for production)
+            reconnect_backoff: Base backoff multiplier for exponential backoff (default: 2.0)
+            max_backoff: Maximum backoff time in seconds (default: 300s = 5min)
+            total_retry_duration: Maximum total time to retry in seconds (None = no limit)
+            enable_circuit_breaker: Enable circuit breaker for permanent failures (default: True)
         """
         self.api_key = api_key
         self.customer_id = customer_id or self._derive_customer_id(api_key)
         self.platform_url = platform_url
-        
+
         # Core components
         self.connection = WebSocketConnection(
             url=platform_url,
             api_key=api_key,
-            customer_id=self.customer_id
+            customer_id=self.customer_id,
+            max_reconnect_attempts=max_reconnect_attempts,
+            reconnect_backoff=reconnect_backoff,
+            max_backoff=max_backoff,
+            total_retry_duration=total_retry_duration,
+            enable_circuit_breaker=enable_circuit_breaker
         )
         self.tool_registry = ToolRegistry()
         self.callback_manager = CallbackManager()
@@ -289,16 +304,42 @@ class ConversimpleAgent:
         await self.callback_manager.trigger_error(error_type, error_message, payload)
 
     async def _handle_connection_event(self, event: str, data: Any = None) -> None:
-        """Handle WebSocket connection events."""
-        logger.info(f"Connection event: {event}")
-        
+        """Handle WebSocket connection events including circuit breaker."""
+        logger.info(f"🔌 Connection event: {event}")
+
         if event == "connected":
             self.connection_state = "connected"
+            logger.info("✅ Connection established successfully")
+
         elif event == "disconnected":
             self.connection_state = "disconnected"
+            logger.info("🔌 Connection closed")
+
+        elif event == "permanent_error":
+            # Circuit breaker opened due to permanent failure
+            self.connection_state = "failed"
+            error_info = data if isinstance(data, dict) else {"error": data}
+            error_code = error_info.get("error_code", "UNKNOWN")
+            error_message = error_info.get("message", str(error_info.get("error", "Unknown error")))
+
+            logger.error(f"🚫 PERMANENT CONNECTION FAILURE: {error_code}")
+            logger.error(f"🚫 Error: {error_message}")
+            logger.error(f"🚫 Circuit breaker open - will not retry automatically")
+            logger.error(f"🚫 Please check credentials and customer account status")
+
+            # Trigger error callback for permanent failures
+            if hasattr(self.callback_manager, 'on_error') and self.callback_manager.on_error:
+                await self.callback_manager.on_error(
+                    error_code,
+                    error_message,
+                    error_info
+                )
+
         elif event == "error":
-            logger.error(f"Connection error: {data}")
+            # Transient error (will retry automatically)
             self.connection_state = "error"
+            logger.error(f"❌ Connection error (retrying): {data}")
+            logger.info("🔄 Automatic reconnection will be attempted")
 
     async def _send_tool_result(self, call_id: str, result: Any) -> None:
         """Send tool execution result to platform."""
