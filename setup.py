@@ -1,5 +1,5 @@
 """
-Setup configuration for Conversimple Python SDK.
+Setup configuration for Conversimple Python SDK (conversimple-sdk package name).
 
 This SDK enables customers to build and deploy AI agents that integrate with
 the Conversimple platform's WebRTC infrastructure and conversation management.
@@ -15,8 +15,8 @@ except FileNotFoundError:
     long_description = "Conversimple SDK - Python client library for the Conversational AI Platform"
 
 setup(
-    name="conversimple",
-    version="0.1.0",
+    name="conversimple-sdk",
+    version="0.2.0",  # Enhanced connection resilience with circuit breaker
     author="Conversimple",
     author_email="support@conversimple.com",
     description="Python SDK for Conversimple Conversational AI Platform",
