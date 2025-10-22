@@ -236,7 +236,7 @@ class ConversimpleDispatcher:
             platform_url=self.platform_url,
         )
 
-        task = asyncio.create_task(self._run_agent(agent_instance, conversation_id, agent_id))
+        task = asyncio.create_task(self._run_agent(agent_instance, conversation_id, agent_id, payload))
         self.active_sessions[conversation_id] = AgentSession(
             agent_id=agent_id,
             conversation_id=conversation_id,
@@ -260,6 +260,7 @@ class ConversimpleDispatcher:
         agent: ConversimpleAgent,
         conversation_id: str,
         agent_id: str,
+        payload: Dict,
     ) -> None:
         """Start agent for a conversation and handle failures."""
         try:
