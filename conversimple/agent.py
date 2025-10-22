@@ -193,21 +193,27 @@ class ConversimpleAgent:
         """Handle conversation ready events from platform."""
         conversation_id = payload.get('conversation_id')
         customer_id = payload.get('customer_id')
-        
+
         logger.info(f"🔧 AGENT_FLOW: Conversation ready event received for {conversation_id}")
-        
+        logger.info(f"🔧 AGENT_FLOW: Payload: {payload}")
+
         if not conversation_id:
             logger.error("🔧 AGENT_FLOW: No conversation_id in conversation_ready event")
             return
-            
+
+        # Update instance conversation_id for future references
+        self.conversation_id = conversation_id
+
         if not self.registered_tools:
             logger.warning("🔧 AGENT_FLOW: No tools available to register for conversation")
+            # Even with no tools, trigger callback
+            await self.callback_manager.trigger_conversation_started(conversation_id)
             return
-        
+
         # Register tools for this specific conversation
         logger.info(f"🔧 AGENT_FLOW: Registering {len(self.registered_tools)} tools for conversation {conversation_id}")
         await self._register_conversation_tools(conversation_id, self.registered_tools)
-        
+
         # Trigger conversation started callback
         await self.callback_manager.trigger_conversation_started(conversation_id)
 
