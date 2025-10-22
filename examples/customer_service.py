@@ -1,9 +1,4 @@
-"""
-Customer Service Agent Example
-
-Demonstrates complex workflow with multiple tools, async operations,
-state management, and business logic integration.
-"""
+"""Customer service agent definition for dispatcher-managed sessions."""
 
 import asyncio
 import aiofiles
@@ -32,6 +27,8 @@ class CustomerServiceAgent(ConversimpleAgent):
     - Error handling and recovery
     - Complex business logic
     """
+
+    agent_id = "example-customer-service-agent"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -387,68 +384,3 @@ class CustomerServiceAgent(ConversimpleAgent):
             print(f"⚠️  Temporary issue: {error_message}")
             print("🔄 Service will reconnect automatically")
 
-
-async def main():
-    """Main function for customer service agent."""
-    print("🎧 Starting Customer Service Agent Example")
-    print("=" * 50)
-    
-    # Configuration
-    import os
-    api_key = os.getenv("CONVERSIMPLE_API_KEY", "demo-service-key-456")
-    customer_id = os.getenv("CONVERSIMPLE_CUSTOMER_ID", "service-demo-customer")
-    platform_url = os.getenv("CONVERSIMPLE_PLATFORM_URL", "ws://localhost:4000/sdk/websocket")
-    
-    print(f"Customer ID: {customer_id}")
-    print(f"Platform URL: {platform_url}")
-    print()
-
-    # Create customer service agent with production-ready connection settings
-    # Infinite retries ensure 24/7 availability with circuit breaker for auth issues
-    agent = CustomerServiceAgent(
-        api_key=api_key,
-        customer_id=customer_id,
-        platform_url=platform_url
-        # Production defaults (infinite retry with circuit breaker):
-        # max_reconnect_attempts=None,      # Never give up on network issues
-        # max_backoff=300,                   # Max 5 min between retries
-        # enable_circuit_breaker=True        # Stop on auth failures
-    )
-
-    try:
-        # Start the agent
-        print("🔗 Connecting to platform...")
-        await agent.start()
-        
-        print("✅ Customer service agent connected!")
-        print("🎯 Available tools:")
-        for tool in agent.registered_tools:
-            print(f"  - {tool['name']}: {tool['description']}")
-        print()
-        
-        print("🎤 Agent is ready for customer service calls...")
-        print("💡 Try asking about account balance, order status, or refund requests!")
-        print()
-        print("Press Ctrl+C to stop")
-        
-        # Keep running
-        while True:
-            await asyncio.sleep(1)
-            
-    except KeyboardInterrupt:
-        print("\n🛑 Stopping customer service agent...")
-        
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        logger.error(f"Agent error: {e}")
-        
-    finally:
-        try:
-            await agent.stop()
-            print("✅ Customer service agent stopped")
-        except Exception as e:
-            logger.error(f"Error stopping agent: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

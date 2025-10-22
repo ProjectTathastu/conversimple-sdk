@@ -1,11 +1,5 @@
-"""
-Simple Weather Agent Example
+"""Simple weather agent definition discovered by the dispatcher."""
 
-Demonstrates basic SDK usage with a weather tool.
-Shows conversation lifecycle management and tool execution.
-"""
-
-import asyncio
 import logging
 from typing import Dict
 
@@ -25,6 +19,8 @@ class WeatherAgent(ConversimpleAgent):
     - Conversation lifecycle callbacks  
     - Basic agent structure
     """
+
+    agent_id = "example-weather-agent"
 
     @tool("Get current weather for a location")
     def get_weather(self, location: str) -> Dict:
@@ -118,99 +114,3 @@ class WeatherAgent(ConversimpleAgent):
             # Transient error - will auto-retry
             print(f"⚠️  Temporary error: {error_message}")
             print("🔄 Agent will reconnect automatically")
-
-
-async def main():
-    """
-    Main function demonstrating weather agent usage.
-    """
-    print("🌤️  Starting Weather Agent Example")
-    print("=" * 50)
-    
-    # Get configuration from environment or use defaults
-    import os
-    api_key = os.getenv("CONVERSIMPLE_API_KEY", "demo-weather-key-123")
-    customer_id = os.getenv("CONVERSIMPLE_CUSTOMER_ID", "weather-demo-customer")
-    platform_url = os.getenv("CONVERSIMPLE_PLATFORM_URL", "ws://localhost:4000/sdk/websocket")
-    
-    print(f"Customer ID: {customer_id}")
-    print(f"Platform URL: {platform_url}")
-    print()
-
-    # Create weather agent with production defaults
-    # - Infinite retries for transient errors (network issues)
-    # - Circuit breaker stops retries on permanent errors (auth failures)
-    # - Exponential backoff up to 5 minutes between retries
-    agent = WeatherAgent(
-        api_key=api_key,
-        customer_id=customer_id,
-        platform_url=platform_url
-        # Optional connection configuration (showing defaults):
-        # max_reconnect_attempts=None,      # Infinite retries (recommended)
-        # reconnect_backoff=2.0,            # Exponential backoff multiplier
-        # max_backoff=300.0,                # Max 5 minutes between retries
-        # enable_circuit_breaker=True       # Stop on auth failures
-    )
-
-    # For testing with limited retries:
-    # agent = WeatherAgent(
-    #     api_key=api_key,
-    #     customer_id=customer_id,
-    #     platform_url=platform_url,
-    #     max_reconnect_attempts=5,         # Only 5 retry attempts
-    #     total_retry_duration=60           # Give up after 1 minute
-    # )
-
-    # Set up event callbacks
-    agent.on_conversation_started = agent.on_conversation_started
-    agent.on_conversation_ended = agent.on_conversation_ended  
-    agent.on_tool_called = agent.on_tool_called
-    agent.on_tool_completed = agent.on_tool_completed
-    agent.on_error = agent.on_error
-
-    try:
-        # Start the agent
-        print("🔗 Connecting to platform...")
-        await agent.start()
-        
-        print("✅ Agent connected successfully!")
-        print("🎯 Registered tools:")
-        for tool in agent.registered_tools:
-            print(f"  - {tool['name']}: {tool['description']}")
-        print()
-        
-        print("🎤 Agent is now listening for conversations...")
-        print("💡 Try asking about weather in your voice conversation!")
-        print()
-        print("Press Ctrl+C to stop the agent")
-        
-        # Keep the agent running
-        while True:
-            await asyncio.sleep(1)
-            
-    except KeyboardInterrupt:
-        print("\n🛑 Stopping weather agent...")
-        
-    except Exception as e:
-        print(f"❌ Error running weather agent: {e}")
-        logger.error(f"Weather agent error: {e}")
-        
-    finally:
-        # Clean up
-        try:
-            await agent.stop()
-            print("✅ Weather agent stopped successfully")
-        except Exception as e:
-            logger.error(f"Error stopping agent: {e}")
-
-
-if __name__ == "__main__":
-    """
-    Run the weather agent example.
-    
-    Usage:
-        export CONVERSIMPLE_API_KEY="your-api-key"
-        export CONVERSIMPLE_CUSTOMER_ID="your-customer-id"
-        python examples/simple_agent.py
-    """
-    asyncio.run(main())

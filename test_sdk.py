@@ -174,7 +174,7 @@ async def main():
         print("\n✅ All tests passed!")
         print("\n💡 Next steps:")
         print("1. Set up environment variables (CONVERSIMPLE_API_KEY, CONVERSIMPLE_CUSTOMER_ID)")
-        print("2. Run example agents: python examples/simple_agent.py")
+        print("2. Run example agents via dispatcher: python -m conversimple.dispatcher --search-path ./examples")
         print("3. Start developing your own agents!")
         
     except Exception as e:

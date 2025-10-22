@@ -1,14 +1,8 @@
-"""
-Multi-Step Booking Agent Example
-
-Demonstrates conversation context and multi-turn workflows with
-complex state management for booking processes.
-"""
+"""Multi-step booking agent definition for dispatcher-managed sessions."""
 
 import asyncio
-import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -38,6 +32,8 @@ class BookingAgent(ConversimpleAgent):
     - Validation and business rules
     - Transaction-like booking processes
     """
+
+    agent_id = "example-booking-agent"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -486,69 +482,3 @@ class BookingAgent(ConversimpleAgent):
         else:
             print(f"⚠️  Temporary issue: {error_message}")
             print("🔄 Reconnecting automatically...")
-
-
-async def main():
-    """Main function for booking agent."""
-    print("📅 Starting Booking Agent Example")
-    print("=" * 50)
-    
-    # Configuration
-    import os
-    api_key = os.getenv("CONVERSIMPLE_API_KEY", "demo-booking-key-789")
-    customer_id = os.getenv("CONVERSIMPLE_CUSTOMER_ID", "booking-demo-customer")
-    platform_url = os.getenv("CONVERSIMPLE_PLATFORM_URL", "ws://localhost:4000/sdk/websocket")
-    
-    print(f"Customer ID: {customer_id}")
-    print(f"Platform URL: {platform_url}")
-    print()
-
-    # Create booking agent with production connection defaults
-    # Critical for booking systems - never miss a reservation due to network issues
-    agent = BookingAgent(
-        api_key=api_key,
-        customer_id=customer_id,
-        platform_url=platform_url
-        # Production defaults ensure maximum availability:
-        # max_reconnect_attempts=None,      # Infinite retries for network issues
-        # max_backoff=300,                   # Max 5 minutes between retries
-        # enable_circuit_breaker=True        # But stop on auth failures
-    )
-
-    try:
-        # Start the agent
-        print("🔗 Connecting to platform...")
-        await agent.start()
-        
-        print("✅ Booking agent connected!")
-        print("🎯 Available booking tools:")
-        for tool in agent.registered_tools:
-            print(f"  - {tool['name']}: {tool['description']}")
-        print()
-        
-        print("🎤 Agent ready for booking conversations...")
-        print("💡 Try asking about availability, booking appointments, or managing reservations!")
-        print()
-        print("Press Ctrl+C to stop")
-        
-        # Keep running
-        while True:
-            await asyncio.sleep(1)
-            
-    except KeyboardInterrupt:
-        print("\n🛑 Stopping booking agent...")
-        
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        logger.error(f"Agent error: {e}")
-        
-    finally:
-        try:
-            await agent.stop()
-            print("✅ Booking agent stopped")
-        except Exception as e:
-            logger.error(f"Error stopping agent: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

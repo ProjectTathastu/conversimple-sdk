@@ -21,48 +21,71 @@ This SDK enables customers to build and deploy AI agents that integrate with the
 pip install conversimple-sdk
 ```
 
-### Basic Usage
+### Define an Agent
 
 ```python
-import asyncio
 from conversimple import ConversimpleAgent, tool
 
 class MyAgent(ConversimpleAgent):
+    agent_id = "1b2bb22f-1c3d-4e5f-6789-abcdef012345"
+
     @tool("Get current weather for a location")
     def get_weather(self, location: str) -> dict:
         return {"location": location, "temperature": 72, "condition": "sunny"}
 
     def on_conversation_started(self, conversation_id: str):
         print(f"Conversation started: {conversation_id}")
-
-async def main():
-    agent = MyAgent(
-        api_key="your-api-key",
-        customer_id="your-customer-id"
-    )
-    
-    await agent.start()
-    
-    # Keep running
-    while True:
-        await asyncio.sleep(1)
-
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
+
+### Run the Dispatcher
+
+Use the dispatcher to discover your agent modules and launch per-conversation instances automatically:
+
+```bash
+python -m conversimple.dispatcher \
+  --api-key "$CONVERSIMPLE_API_KEY" \
+  --platform-url "$CONVERSIMPLE_PLATFORM_URL" \
+  --search-path ./agents
+```
+
+The dispatcher keeps a single control-plane connection, listens for `conversation_ready` events, and spawns a dedicated `ConversimpleAgent` for each active conversation. This applies even if you only have one agent—the dispatcher guarantees safe concurrency and simplifies redeployments.
 
 ## Core Concepts
 
-### Agent Session Model
+### Dispatcher-Orchestrated Sessions
 
-Each `ConversimpleAgent` instance handles a single conversation session. For multiple concurrent conversations, create multiple agent instances:
+All deployments (even single-agent) must run through the dispatcher so each conversation is isolated in its own `ConversimpleAgent` instance. The dispatcher:
+
+- Watches for `conversation_ready` events over a persistent control connection
+- Scans a directory for `ConversimpleAgent` subclasses that expose an `agent_id`
+- Spawns one agent instance per conversation and stops it when the session ends
+
+#### Declaring Agent Identity
+
+Embed the platform agent UUID (or a stable identifier) on each agent class so the dispatcher can auto-register it:
 
 ```python
-# Per-conversation agent instances
-async def handle_conversation(conversation_id):
-    agent = MyAgent(api_key=api_key, customer_id=customer_id)
-    await agent.start(conversation_id=conversation_id)
+from conversimple import ConversimpleAgent, tool
+
+class BillingAgent(ConversimpleAgent):
+    agent_id = "7f1f28f7-4c4c-4a77-8f7a-9cf6580e3f32"
+
+    @tool("Lookup outstanding invoices")
+    def lookup_invoices(self, customer_id: str) -> dict:
+        ...
 ```
+
+#### Running the Dispatcher
+
+Point the dispatcher at a directory of agent modules (typically your project root):
+
+```bash
+python -m conversimple.dispatcher --api-key "$CONVERSIMPLE_API_KEY" \
+  --platform-url "$CONVERSIMPLE_PLATFORM_URL" \
+  --search-path ./agents
+```
+
+The dispatcher discovers all agents under `--search-path`, matches incoming `agent_id` values from the platform, and launches dedicated `ConversimpleAgent` instances for each conversation. Because the dispatcher brokers every session, you get safe concurrency, easy hot-reloads, and no need to hand-wire credentials inside individual agents. Existing conversations keep running during redeploys; new sessions pick up the latest code automatically.
 
 ### Tool Registration
 
@@ -198,40 +221,29 @@ agent = ConversimpleAgent(
 
 ## Examples
 
-The SDK includes several example implementations:
+Example agents live in `examples/` and are discovered automatically when you point the dispatcher at that directory:
 
-### Simple Weather Agent
 ```bash
-python examples/simple_agent.py
+python -m conversimple.dispatcher \
+  --api-key "$CONVERSIMPLE_API_KEY" \
+  --platform-url "$CONVERSIMPLE_PLATFORM_URL" \
+  --search-path ./examples
 ```
 
-A basic agent that provides weather information, demonstrating:
-- Tool registration with `@tool` decorator
+### Simple Weather Agent (`examples/simple_agent.py`)
+- Basic weather information tools
 - Conversation lifecycle callbacks
-- Basic agent structure
+- Good starting point for lightweight agents
 
-### Customer Service Agent  
-```bash
-python examples/customer_service.py
-```
+### Customer Service Agent (`examples/customer_service.py`)
+- Customer lookup, balance, and ticket management tools
+- Mix of synchronous and asynchronous operations
+- Demonstrates stateful workflows and external API usage
 
-Advanced customer service agent with multiple tools:
-- Customer lookup and account management
-- Support ticket creation
-- Email notifications
-- Refund processing
-- Async tool execution
-
-### Multi-Step Booking Agent
-```bash  
-python examples/booking_agent.py
-```
-
-Complex booking workflow demonstrating:
-- Multi-turn conversation state management
-- Booking creation, confirmation, and cancellation
-- Business rule validation
-- Transaction-like processes
+### Multi-Step Booking Agent (`examples/booking_agent.py`)
+- Availability checks, booking creation, confirmation, and cancellation
+- Stateful booking sessions with validations
+- Shows how to manage multi-turn transactional flows
 
 ## API Reference
 
