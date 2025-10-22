@@ -6,6 +6,7 @@ the Conversimple platform's WebRTC infrastructure and conversation management.
 """
 
 from .agent import ConversimpleAgent
+from .dispatcher import AgentRegistry, ConversimpleDispatcher, run_dispatcher
 from .tools import tool, tool_async
 from .callbacks import (
     ConversationLifecycleEvent,
@@ -22,5 +23,8 @@ __all__ = [
     "ConversationLifecycleEvent",
     "ToolCallEvent", 
     "ErrorEvent",
-    "ConfigUpdateEvent"
+    "ConfigUpdateEvent",
+    "AgentRegistry",
+    "ConversimpleDispatcher",
+    "run_dispatcher",
 ]
